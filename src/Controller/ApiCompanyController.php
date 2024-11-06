@@ -18,7 +18,7 @@ class ApiCompanyController extends AbstractController {
 
 		foreach ($doctrine->getRepository(Company::class)->findAll() as $company) {
 			if ($company instanceof Company) {
-				$toReturn[] = $company->toArray();
+				$toReturn[] = $company->toJsonArray();
 			}
 		}
 
@@ -59,18 +59,18 @@ class ApiCompanyController extends AbstractController {
 		$entityManager->persist($company);
 		$entityManager->flush();
 
-		return $this->json($company->toArray());
+		return $this->json($company->toJsonArray());
 	}
 
 	#[Route('/{id}', name: 'get', methods: ['get'])]
-	public function show(ManagerRegistry $doctrine, int $id): JsonResponse {
+	public function get(ManagerRegistry $doctrine, int $id): JsonResponse {
 		$company = $doctrine->getRepository(Company::class)->find($id);
 
 		if (!$company) {
 			return $this->json('No company found for id ' . $id, 404);
 		}
 
-		return $this->json($company->toArray());
+		return $this->json($company->toJsonArray());
 	}
 
 	#[Route('/{id}', name: 'update', methods: ['put', 'patch'])]
@@ -100,7 +100,7 @@ class ApiCompanyController extends AbstractController {
 
 		$entityManager->flush();
 
-		return $this->json($company->toArray());
+		return $this->json($company->toJsonArray());
 	}
 
 	#[Route('/{id}', name: 'delete', methods: ['delete'])]

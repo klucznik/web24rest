@@ -6,90 +6,95 @@ use App\Repository\EmployeeRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: EmployeeRepository::class)]
-class Employee
-{
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column]
-    private ?int $id = null;
+class Employee {
+	#[ORM\Id]
+	#[ORM\GeneratedValue]
+	#[ORM\Column]
+	private ?int $id = null;
 
-    #[ORM\Column(length: 255)]
-    private ?string $firstname = null;
+	#[ORM\Column(length: 255)]
+	private ?string $firstname = null;
 
-    #[ORM\Column(length: 255)]
-    private ?string $surname = null;
+	#[ORM\Column(length: 255)]
+	private ?string $surname = null;
 
-    #[ORM\Column(length: 255)]
-    private ?string $email = null;
+	#[ORM\Column(length: 255)]
+	private ?string $email = null;
 
-    #[ORM\Column(length: 255, nullable: true)]
-    private ?string $phone = null;
+	#[ORM\Column(length: 255, nullable: true)]
+	private ?string $phone = null;
 
-	#[ORM\ManyToOne(targetEntity: Company::class, inversedBy: 'company')]
+	#[ORM\ManyToOne(targetEntity: Company::class)]
 	private Company $company;
 
-    public function getId(): ?int
-    {
-        return $this->id;
-    }
+	public function getId(): ?int {
+		return $this->id;
+	}
 
-    public function getFirstname(): ?string
-    {
-        return $this->firstname;
-    }
+	public function getFirstname(): ?string {
+		return $this->firstname;
+	}
 
-    public function setFirstname(string $firstname): static
-    {
-        $this->firstname = $firstname;
+	public function setFirstname(string $firstname): static {
+		$this->firstname = $firstname;
 
-        return $this;
-    }
+		return $this;
+	}
 
-    public function getSurname(): ?string
-    {
-        return $this->surname;
-    }
+	public function getSurname(): ?string {
+		return $this->surname;
+	}
 
-    public function setSurname(string $surname): static
-    {
-        $this->surname = $surname;
+	public function setSurname(string $surname): static {
+		$this->surname = $surname;
 
-        return $this;
-    }
+		return $this;
+	}
 
-    public function getEmail(): ?string
-    {
-        return $this->email;
-    }
+	public function getEmail(): ?string {
+		return $this->email;
+	}
 
-    public function setEmail(string $email): static
-    {
-        $this->email = $email;
+	public function setEmail(string $email): static {
+		$this->email = $email;
 
-        return $this;
-    }
+		return $this;
+	}
 
-    public function getPhone(): ?string
-    {
-        return $this->phone;
-    }
+	public function getPhone(): ?string {
+		return $this->phone;
+	}
 
-    public function setPhone(?string $phone): static
-    {
-        $this->phone = $phone;
+	public function setPhone(?string $phone): static {
+		$this->phone = $phone;
 
-        return $this;
-    }
+		return $this;
+	}
 
-	public function getCategory(): ?Company
-	{
+	public function getCompany(): ?Company {
 		return $this->company;
 	}
 
-	public function setCategory(?Company $company): self
-	{
+	public function setCompany(?Company $company): static {
 		$this->company = $company;
 
 		return $this;
+	}
+
+	public function toJsonArray(bool $includeRelations = true): array {
+		$toReturn = [
+			'id' => $this->getId(),
+			'firstname' => $this->getFirstname(),
+			'surname' => $this->getSurname(),
+			'email' => $this->getEmail(),
+			'phone' => $this->getPhone(),
+			'company' => $this->getCompany()->getId()
+		];
+
+		if ($includeRelations) {
+			$toReturn['company'] = $this->getCompany()->toJsonArray(false);
+		}
+
+		return $toReturn;
 	}
 }

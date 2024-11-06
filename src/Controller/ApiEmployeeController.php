@@ -9,15 +9,18 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 #[Route('/api/employee', name: 'api_employee_')]
 class ApiEmployeeController extends AbstractController {
 
+	public function __construct(private readonly ManagerRegistry $doctrine) {}
+
 	#[Route('/', name: 'list', methods: ['get'])]
-	public function list(ManagerRegistry $doctrine): JsonResponse {
+	public function list(): JsonResponse {
 		$toReturn = [];
 
-		foreach ($doctrine->getRepository(Employee::class)->findAll() as $employee) {
+		foreach ($this->doctrine->getRepository(Employee::class)->findAll() as $employee) {
 			if ($employee instanceof Employee) {
 				$toReturn[] = $employee->toJsonArray();
 			}
@@ -27,38 +30,16 @@ class ApiEmployeeController extends AbstractController {
 	}
 
 	#[Route('/', name: 'create', methods: ['post'])]
-	public function create(ManagerRegistry $doctrine, Request $request): JsonResponse {
-		if (!$request->request->has('firstname')) {
-			return $this->json('Missing employee firstname', 400);
-		}
-
-		if (!$request->request->has('surname')) {
-			return $this->json('Missing employee surname', 400);
-		}
-
-		if (!$request->request->has('email')) {
-			return $this->json('Missing employee email', 400);
-		}
-
-		if (!$request->request->has('company')) {
-			return $this->json('Missing employee company', 400);
-		}
-
-		$entityManager = $doctrine->getManager();
-
+	public function create(Request $request, ValidatorInterface $validator): JsonResponse {
 		$employee = new Employee();
-		$employee->setFirstname($request->request->get('firstname'));
-		$employee->setSurname($request->request->get('surname'));
-		$employee->setEmail($request->request->get('email'));
-		$employee->setPhone($request->request->get('phone'));
+		$employee = $this->updateEmployeeFromRequest($request, $employee);
 
-		$companyId = $request->request->get('company');
-		$company = $doctrine->getRepository(Company::class)->find($companyId);
-		if (!$company instanceof Company) {
-			return $this->json('No company found for id ' . $companyId, 404);
+		$errors = $validator->validate($employee);
+		if (count($errors) > 0) {
+			return $this->json((string) $errors, 400);
 		}
-		$employee->setCompany($company);
 
+		$entityManager = $this->doctrine->getManager();
 		$entityManager->persist($employee);
 		$entityManager->flush();
 
@@ -77,33 +58,15 @@ class ApiEmployeeController extends AbstractController {
 	}
 
 	#[Route('/{id}', name: 'update', methods: ['put', 'patch'])]
-	public function update(ManagerRegistry $doctrine, Request $request, int $id): JsonResponse {
-		$entityManager = $doctrine->getManager();
+	public function update(Request $request, int $id, ValidatorInterface $validator): JsonResponse {
+		$entityManager = $this->doctrine->getManager();
 		$employee = $entityManager->getRepository(Employee::class)->find($id);
 
-		if (!$employee) {
-			return $this->json('No employee found for id' . $id, 404);
-		}
+		$employee = $this->updateEmployeeFromRequest($request, $employee);
 
-		if ($request->request->has('firstname')) {
-			$employee->setFirstname($request->request->get('firstname'));
-		}
-		if ($request->request->has('surname')) {
-			$employee->setSurname($request->request->get('surname'));
-		}
-		if ($request->request->has('email')) {
-			$employee->setEmail($request->request->get('email'));
-		}
-		if ($request->request->has('phone')) {
-			$employee->setPhone($request->request->get('phone'));
-		}
-		if ($request->request->has('company')) {
-			$companyId = $request->request->get('company');
-			$company = $doctrine->getRepository(Company::class)->find($companyId);
-			if (!$company instanceof Company) {
-				return $this->json('No company found for id ' . $companyId, 404);
-			}
-			$employee->setCompany($company);
+		$errors = $validator->validate($employee);
+		if (count($errors) > 0) {
+			return $this->json((string) $errors, 400);
 		}
 
 		$entityManager->flush();
@@ -112,8 +75,8 @@ class ApiEmployeeController extends AbstractController {
 	}
 
 	#[Route('/{id}', name: 'delete', methods: ['delete'])]
-	public function delete(ManagerRegistry $doctrine, int $id): JsonResponse {
-		$entityManager = $doctrine->getManager();
+	public function delete(int $id): JsonResponse {
+		$entityManager = $this->doctrine->getManager();
 		$employee = $entityManager->getRepository(Employee::class)->find($id);
 
 		if (!$employee) {
@@ -124,5 +87,33 @@ class ApiEmployeeController extends AbstractController {
 		$entityManager->flush();
 
 		return $this->json('Deleted a employee with id ' . $id);
+	}
+
+	protected function updateEmployeeFromRequest(Request $request, Employee $employee): Employee {
+		if ($request->request->has('firstname')) {
+			$employee->setFirstname($request->request->get('firstname'));
+		}
+
+		if ($request->request->has('surname')) {
+			$employee->setSurname($request->request->get('surname'));
+		}
+
+		if ($request->request->has('email')) {
+			$employee->setEmail($request->request->get('email'));
+		}
+
+		if ($request->request->has('phone')) {
+			$employee->setPhone($request->request->get('phone'));
+		}
+
+		if ($request->request->has('company')) {
+			$companyId = $request->request->get('company');
+			$company = $this->doctrine->getRepository(Company::class)->find($companyId);
+			if ($company instanceof Company) {
+				$employee->setCompany($company);
+			}
+		}
+
+		return $employee;
 	}
 }

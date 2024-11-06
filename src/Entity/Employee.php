@@ -4,6 +4,7 @@ namespace App\Entity;
 
 use App\Repository\EmployeeRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: EmployeeRepository::class)]
 class Employee {
@@ -12,18 +13,22 @@ class Employee {
 	#[ORM\Column]
 	private ?int $id = null;
 
+	#[Assert\NotBlank]
 	#[ORM\Column(length: 255)]
 	private ?string $firstname = null;
 
+	#[Assert\NotBlank]
 	#[ORM\Column(length: 255)]
 	private ?string $surname = null;
 
+	#[Assert\NotBlank]
 	#[ORM\Column(length: 255)]
 	private ?string $email = null;
 
 	#[ORM\Column(length: 255, nullable: true)]
 	private ?string $phone = null;
 
+	#[Assert\NotBlank]
 	#[ORM\ManyToOne(targetEntity: Company::class)]
 	private Company $company;
 

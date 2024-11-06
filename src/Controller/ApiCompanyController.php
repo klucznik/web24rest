@@ -8,15 +8,18 @@ use Symfony\Component\Routing\Annotation\Route;
 use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Component\HttpFoundation\Request;
 use App\Entity\Company;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 #[Route('/api/company', name: 'api_company_')]
 class ApiCompanyController extends AbstractController {
 
+	public function __construct(private readonly ManagerRegistry $doctrine) {}
+
 	#[Route('/', name: 'list', methods: ['get'])]
-	public function list(ManagerRegistry $doctrine): JsonResponse {
+	public function list(): JsonResponse {
 		$toReturn = [];
 
-		foreach ($doctrine->getRepository(Company::class)->findAll() as $company) {
+		foreach ($this->doctrine->getRepository(Company::class)->findAll() as $company) {
 			if ($company instanceof Company) {
 				$toReturn[] = $company->toJsonArray();
 			}
@@ -26,36 +29,16 @@ class ApiCompanyController extends AbstractController {
 	}
 
 	#[Route('/', name: 'create', methods: ['post'])]
-	public function create(ManagerRegistry $doctrine, Request $request): JsonResponse {
-		if (!$request->request->has('name')) {
-			return $this->json('Missing company name', 400);
-		}
-
-		if (!$request->request->has('city')) {
-			return $this->json('Missing company city', 400);
-		}
-
-		if (!$request->request->has('address')) {
-			return $this->json('Missing company address', 400);
-		}
-
-		if (!$request->request->has('nip')) {
-			return $this->json('Missing company nip', 400);
-		}
-
-		if (!$request->request->has('postcode')) {
-			return $this->json('Missing company postcode', 400);
-		}
-
-		$entityManager = $doctrine->getManager();
-
+	public function create(Request $request, ValidatorInterface $validator): JsonResponse {
 		$company = new Company();
-		$company->setName($request->request->get('name'));
-		$company->setCity($request->request->get('city'));
-		$company->setAddress($request->request->get('address'));
-		$company->setNip($request->request->get('nip'));
-		$company->setPostcode($request->request->get('postcode'));
+		$company = $this->updateCompanyFromRequest($request, $company);
 
+		$errors = $validator->validate($company);
+		if (count($errors) > 0) {
+			return $this->json((string) $errors, 400);
+		}
+
+		$entityManager = $this->doctrine->getManager();
 		$entityManager->persist($company);
 		$entityManager->flush();
 
@@ -63,8 +46,8 @@ class ApiCompanyController extends AbstractController {
 	}
 
 	#[Route('/{id}', name: 'get', methods: ['get'])]
-	public function get(ManagerRegistry $doctrine, int $id): JsonResponse {
-		$company = $doctrine->getRepository(Company::class)->find($id);
+	public function get(int $id): JsonResponse {
+		$company = $this->doctrine->getRepository(Company::class)->find($id);
 
 		if (!$company) {
 			return $this->json('No company found for id ' . $id, 404);
@@ -74,28 +57,15 @@ class ApiCompanyController extends AbstractController {
 	}
 
 	#[Route('/{id}', name: 'update', methods: ['put', 'patch'])]
-	public function update(ManagerRegistry $doctrine, Request $request, int $id): JsonResponse {
-		$entityManager = $doctrine->getManager();
+	public function update(Request $request, int $id, ValidatorInterface $validator): JsonResponse {
+		$entityManager = $this->doctrine->getManager();
 		$company = $entityManager->getRepository(Company::class)->find($id);
 
-		if (!$company) {
-			return $this->json('No company found for id' . $id, 404);
-		}
+		$company = $this->updateCompanyFromRequest($request, $company);
 
-		if ($request->request->has('name')) {
-			$company->setName($request->request->get('name'));
-		}
-		if ($request->request->has('city')) {
-			$company->setCity($request->request->get('city'));
-		}
-		if ($request->request->has('address')) {
-			$company->setAddress($request->request->get('address'));
-		}
-		if ($request->request->has('nip')) {
-			$company->setNip($request->request->get('nip'));
-		}
-		if ($request->request->has('postcode')) {
-			$company->setPostcode($request->request->get('postcode'));
+		$errors = $validator->validate($company);
+		if (count($errors) > 0) {
+			return $this->json((string) $errors, 400);
 		}
 
 		$entityManager->flush();
@@ -104,8 +74,8 @@ class ApiCompanyController extends AbstractController {
 	}
 
 	#[Route('/{id}', name: 'delete', methods: ['delete'])]
-	public function delete(ManagerRegistry $doctrine, int $id): JsonResponse {
-		$entityManager = $doctrine->getManager();
+	public function delete(int $id): JsonResponse {
+		$entityManager = $this->doctrine->getManager();
 		$company = $entityManager->getRepository(Company::class)->find($id);
 
 		if (!$company) {
@@ -116,5 +86,29 @@ class ApiCompanyController extends AbstractController {
 		$entityManager->flush();
 
 		return $this->json('Deleted a company with id ' . $id);
+	}
+
+	protected function updateCompanyFromRequest(Request $request, Company $company): Company {
+		if ($request->request->has('name')) {
+			$company->setName($request->request->get('name'));
+		}
+
+		if ($request->request->has('city')) {
+			$company->setCity($request->request->get('city'));
+		}
+
+		if ($request->request->has('address')) {
+			$company->setAddress($request->request->get('address'));
+		}
+
+		if ($request->request->has('nip')) {
+			$company->setNip($request->request->get('nip'));
+		}
+
+		if ($request->request->has('postcode')) {
+			$company->setPostcode($request->request->get('postcode'));
+		}
+
+		return $company;
 	}
 }
